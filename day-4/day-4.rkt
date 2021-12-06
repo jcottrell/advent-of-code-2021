@@ -106,26 +106,55 @@
 ;(get-unmarked-total horizontal-winner)
 ;(get-unmarked-total vertical-winner)
 
+(define (get-draw-winner which-winner-fun remaining-draws cards)
+  (letrec ([spin (lambda (remaining-draws cards)
+    (cond [(empty? remaining-draws) cards]
+          [else (let* ([current-draw (first remaining-draws)]
+                       [current-cards (map (lambda (card)
+                                           (mark-square card current-draw))
+                                         cards)]
+                       [winning-card  (which-winner-fun current-cards cards current-draw)])
+                  (if winning-card
+                      (values winning-card current-draw)
+                      (spin (rest remaining-draws)
+                            current-cards)))]))])
+  (spin remaining-draws cards)))
+
+(define (find-first-winner current-cards _ __)
+  (findf winner? current-cards))
+
 (define (get-first-winner draws cards)
-  (letrec ([get-draw-winner (lambda (remaining-draws cards)
-                               (cond [(empty? remaining-draws) cards]
-                                     [else (let* ([current-draw (first remaining-draws)]
-                                                  [current-cards (map (lambda (card)
-                                                                      (mark-square card current-draw))
-                                                                    cards)]
-                                                  [winning-card  (findf winner? current-cards)])
-                                             (if winning-card
-                                                 (values winning-card current-draw)
-                                                 (get-draw-winner (rest remaining-draws)
-                                                                  current-cards)))]))])
-    (get-draw-winner draws cards)))
+    (get-draw-winner find-first-winner draws cards))
 #;(get-first-winner (lines->draws test-input)
                     (lines->cards test-input))
-(define (parse-and-get-final-score lines)
+(define (parse-and-get-final-score-by-first-winner lines)
   (let-values ([(winner last-draw) (get-first-winner (lines->draws lines)
                                                      (lines->cards lines))])
     (* (get-unmarked-total winner)
        last-draw)))
-;(parse-and-get-final-score test-input)
+;(parse-and-get-final-score-by-first-winner test-input)
 ;; 4512
-;(parse-and-get-final-score (file->lines "input.txt"))
+;(parse-and-get-final-score-by-first-winner (file->lines "input.txt"))
+;; 39902
+;
+;; Part 2
+(define (find-last-winner current-cards previous-cards current-draw)
+  (if (and (andmap winner? current-cards)
+           (ormap  winner? previous-cards))
+      (mark-square (findf (lambda (card)
+               (not (winner? card)))
+             previous-cards) current-draw)
+      #f))
+(define (get-last-winner draws cards)
+  (get-draw-winner find-last-winner draws cards))
+#;(get-last-winner (lines->draws test-input)
+                   (lines->cards test-input))
+(define (parse-and-get-final-score-by-last-winner lines)
+  (let-values ([(winner last-draw) (get-last-winner (lines->draws lines)
+                                                    (lines->cards lines))])
+    (* (get-unmarked-total winner)
+       last-draw)))
+;(parse-and-get-final-score-by-last-winner test-input)
+;; 1924
+;(parse-and-get-final-score-by-last-winner (file->lines "input.txt"))
+;; 26936
